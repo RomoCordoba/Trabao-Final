@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESP32 - Control, LDR y Temperatura</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background-color: #2196F3;
+            color: white;
+        }
+
+        button:hover {
+            background-color: #1976D2;
+        }
+
+        .status-text {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .ldr-indicator, .temperature {
+            margin-top: 40px;
+        }
+
+        .gauge {
+            width: 150px;
+            height: 150px;
+            transform: rotate(-90deg);
+            margin: auto;
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 10;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 282.6;
+            stroke-dashoffset: 282.6;
+            transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;
+        }
+
+        svg text {
+            transform: rotate(90deg);
+            transform-origin: center;
+            font-size: 20px;
+            fill: #333;
+        }
+    </style>
+
+    <script>
+        function updateLEDStatus(led, status) {
+            const statusElement = document.getElementById('status' + led);
+            statusElement.innerHTML = `LED${led} is now ${status}.`;
+        }
+
+        function ledOn(led) {
+            fetch(`/led/on/${led}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateLEDStatus(led, 'ON');
+                    }
+                });
+        }
+
+        function ledOff(led) {
+            fetch(`/led/off/${led}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateLEDStatus(led, 'OFF');
+                    }
+                });
+        }
+
+        function getLuz() {
+            fetch("/ldr")
+                .then(response => response.json()) 
+                .then(data => {
+                    const porcentaje = data.ldr;
+                    const arc = document.getElementById("gaugeArc");
+                    const text = document.getElementById("ldrText");
+
+                    const offset = 282.6 - (porcentaje / 100) * 282.6;
+                    arc.style.strokeDashoffset = offset;
+                    text.textContent = `${porcentaje}%`;
+
+                    if (porcentaje >= 75) {
+                        arc.style.stroke = "#4CAF50"; // Verde
+                    } else if (porcentaje >= 40) {
+                        arc.style.stroke = "#FFEB3B"; // Amarillo
+                    } else {
+                        arc.style.stroke = "#F44336"; // Rojo
+                    }
+                });
+        }
+
+        function getTemp() {
+            fetch("/temp")
+                .then(response => response.json())
+                .then(data => {
+                    const temp = data.temp;
+                    const arc = document.getElementById("tempArc");
+                    const text = document.getElementById("tempText");
+
+                    const min = 0, max = 50;
+                    const porcentaje = (temp - min) / (max - min) * 100;
+                    const offset = 282.6 - (porcentaje / 100) * 282.6;
+
+                    arc.style.strokeDashoffset = offset;
+                    text.textContent = `${temp}°C`;
+
+                    if (temp >= 30) {
+                        arc.style.stroke = "#F44336";  // Rojo
+                    } else if (temp >= 20) {
+                        arc.style.stroke = "#FFEB3B";  // Amarillo
+                    } else {
+                        arc.style.stroke = "#2196F3";  // Azul
+                    }
+                });
+        }
+
+        setInterval(getLuz, 1000);
+        setInterval(getTemp, 2000);
+    </script>
+</head>
+
+<body>
+    <h2>Servidor ESP32 - Actividad Final</h2>
+
+    <div>
+        <button onclick="ledOn(1)">LED1 ON</button>
+        <button onclick="ledOff(1)">LED1 OFF</button><br><br>
+        <button onclick="ledOn(2)">LED2 ON</button>
+        <button onclick="ledOff(2)">LED2 OFF</button><br><br>
+        <button onclick="ledOn(3)">LED3 ON</button>
+        <button onclick="ledOff(3)">LED3 OFF</button><br><br>
+        <button onclick="ledOn(4)">BUZZER ON</button>
+        <button onclick="ledOff(4)">BUZZER OFF</button>
+    </div>
+
+    <div class="status-text" id="status1">LED1 is now OFF.</div>
+    <div class="status-text" id="status2">LED2 is now OFF.</div>
+    <div class="status-text" id="status3">LED3 is now OFF.</div>
+    <div class="status-text" id="status4">LED4 is now OFF.</div>
+
+    <div class="ldr-indicator">
+        <svg viewBox="0 0 100 100" class="gauge">
+            <circle cx="50" cy="50" r="45" class="gauge-bg"/>
+            <circle cx="50" cy="50" r="45" class="gauge-progress" id="gaugeArc"/>
+            <text x="50" y="55" text-anchor="middle" id="ldrText">0%</text>
+        </svg>
+        <p>Sensor de luz (LDR)</p>
+    </div>
+
+    <div class="temperature">
+        <svg viewBox="0 0 100 100" class="gauge">
+            <circle cx="50" cy="50" r="45" class="gauge-bg"/>
+            <circle cx="50" cy="50" r="45" class="gauge-progress" id="tempArc"/>
+            <text x="50" y="55" text-anchor="middle" id="tempText">--°C</text>
+        </svg>
+        <p>Temperatura ambiente</p>
+    </div>
+</body>
+</html>
+
+
+   
